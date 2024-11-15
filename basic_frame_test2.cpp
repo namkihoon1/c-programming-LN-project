@@ -6,19 +6,20 @@
 #define MAX_CARDS 20 // 카드 개수
 #define MAX_WEIGHT 2000 // 초기 무게
 #define MAX_FLOORS 20 // 탑 꼭대기 20층으로 설정
-
+/*
 //탑 구조체
 typedef struct {
     int limitWeight; //탑이 버틸 수 있는 한계 무게 (넘으면 game over)
 
 
 }Tower;
-
+*/
 // 플레이어 구조체
 typedef struct {
     int currentWeight;
     int currentFloor;
-    int skipped; // 층 건너뛰기 카드 사용 여부 플래그
+    int skipped;
+    int effectFloor; // 층 건너뛰기 카드 사용 여부 플래그
 } Player;
 
 // 카드 함수 포인터 배열
@@ -26,14 +27,20 @@ typedef void (*CardFunction)(Player*);
 
 // 20종류 카드 만들기 전 크게 5개 정도만 !!임시적으로!! 효과를 구현함
 void decreaseWeight(Player* player) {
-    int decrease = (rand() % 151) + 50;
+    int decrease = (rand() % 151) + 200;
     player->currentWeight -= decrease;
+    if (player->currentWeight <= 0) {
+        player->currentWeight = 0;
+    }
     printf("무게가 %dkg 감소했습니다! 현재 무게: %dkg\n", decrease, player->currentWeight); // 일단 무게 증가나 무게 감소 배율?은 이후 조정. 
 }
 
 void increaseWeight(Player* player) {
     int increase = (rand() % 51) + 50;
     player->currentWeight += increase;
+    if (player->currentWeight <= 0) {
+        player->currentWeight = 0;
+    }
     printf("무게가 %dkg 증가했습니다! 현재 무게: %dkg\n", increase, player->currentWeight);
 }
 
@@ -49,19 +56,50 @@ void skipFloor(Player* player) {
     printf("층을 무시하고 넘어갑니다! 현재 층: %d층\n", player->currentFloor);
 }
 
+
+
+void applyBalloonEffect(Player* player) {
+    player->effectFloor = 3;
+
+
+    player->currentWeight = (player->currentWeight) - 400;
+    printf("풍선 효과로 1턴 동안 400kg 감소했습니다! 현재 무게: %d\n", player->currentWeight);
+    }
+    
+    
+    
+
+
+/*
 void applyBalloonEffect(Player* player) {
     printf("풍선 효과로 임시로 100kg 감소했습니다!\n"); // 아직 풍선효과가 영구적으로 지속됨. 이후 수정
     player->currentWeight -= 100;                       //효과가 한층동안만 적용되면 스킵이랑 크게 다를게 없으니 풍선 지속시간을 3턴 정도로 하면 괜찮을듯?
-}
+}*/
 void randomWeight(Player* player) {
     int minIncrease = -500;
     int maxIncrease = 500;
     int weightIncrease = (rand() % (maxIncrease - minIncrease + 1)) + minIncrease;
+    if (player->currentWeight <= 0) {
+        player->currentWeight = 0;
+    }
+    printf("랜덤으로 무게를 더하거나 뺍니다! 현재 무게: %dkg\n", player->currentWeight);
+}
+
+void randomMultiple(Player* player) {
+    int effect = rand() % 2;
+    if (effect == 0) {
+       player-> currentWeight =  player->currentWeight *= 2; //무게 두배 증가
+    }
+    else {
+        player->currentWeight = (player->currentWeight + 1) / 2; //무게 절반 감소
+    }
+    printf("랜덤으로 무게가 2배로 나눠지거나 곱해집니다! 현재 무게: %dkg\n", player ->currentWeight);
 }
 
 
+
 // 카드 설명
-const char* cardNames[] = { "무게 감소", "무게 증가", "이전 층 무게로 복귀", "층 건너뛰기", "풍선 효과" };
+const char* cardNames[] = { "무게 감소", "무게 증가", "이전 층 무게로 복귀", "층 건너뛰기", "풍선 효과","랜덤 무게 부여","무게 두배 증가 혹은 두배 감소"};
 
 // 카드 선택
 void selectCard(Player* player, CardFunction cards[], const char* cardDescriptions[]) {
@@ -121,6 +159,16 @@ void playGame(Player* player) {
             printf("무게가 너무 무거워 %d층에 오를 수 없습니다. 게임 오버!\n", player->currentFloor);
             return;
         }
+        //풍선 효과턴 확인하기
+        if (player->effectFloor >= 1) {
+            player->effectFloor--;
+            if (player->effectFloor == 0) {
+                player->currentWeight += 400;
+            }
+        }
+    
+            
+        
 
         player->skipped = 0; // 다음 루프에서는 다시 무게 제한 검사 적용
 
@@ -132,13 +180,27 @@ void playGame(Player* player) {
         const char* selectedDescriptions[3];
         for (int i = 0; i < 3; i++) {
             int cardIndex = rand() % 5;
+
             selectedCards[i] = cardDeck[cardIndex];
             selectedDescriptions[i] = cardNames[cardIndex];
+
+            if (i == 1 && selectedCards[0] == selectedCards[1])
+            {
+                i--;
+            }
+            if (i == 2 && (selectedCards[0] == selectedCards[2] || selectedCards[1] == selectedCards[2]))
+            {
+                i--;
+            }
         }
 
         // 카드 설명 및 선택하기
         printf("사용 가능한 카드:\n");
         selectCard(player, selectedCards, selectedDescriptions);
+
+        
+        
+
 
         // 다음 층으로 이동
         player->currentFloor++;
